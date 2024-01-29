@@ -97,6 +97,7 @@ class BlogPost(db.Model):
     body: Mapped[str] = mapped_column(Text, nullable=False)
     img_url: Mapped[str] = mapped_column(String(250), nullable=False)
     comments = relationship('Comment', back_populates='parent_post')
+    #
 
 class Comment(db.Model):
     __tablename__ = 'comments'
