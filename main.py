@@ -122,26 +122,35 @@ with app.app_context():
 
 
 # TODO: Use Werkzeug to hash the user's password when creating a new user.
-@app.route('/register', methods=['POST', "GET"])
+@app.route('/register', methods=["GET", "POST"])
 def register():
-    form = forms.RegisterForm()
+    form = RegisterForm()
     if form.validate_on_submit():
-        email = request.form.get('email')
-        name = request.form.get('name')
-        password = generate_password_hash(password=request.form.get('password'), method='pbkdf2:sha256', salt_length=30)
-        try:
-            new_user = User(email=email, password=password, name=name)
-            db.session.add(new_user)
-            db.session.commit()
-            login_user(new_user)
-        except sqlalchemy.exc.IntegrityError:
-            flash("You've already signed up with this email. Login Instead")
+
+        # Check if user email is already present in the database.
+        result = db.session.execute(db.select(User).where(User.email == form.email.data))
+        user = result.scalar()
+        if user:
+            # User already exists
+            flash("You've already signed up with that email, log in instead!")
             return redirect(url_for('login'))
-        return redirect(url_for('get_all_posts'))
 
-
-
-    return render_template("register.html", form=form)
+        hash_and_salted_password = generate_password_hash(
+            form.password.data,
+            method='pbkdf2:sha256',
+            salt_length=8
+        )
+        new_user = User(
+            email=form.email.data,
+            name=form.name.data,
+            password=hash_and_salted_password,
+        )
+        db.session.add(new_user)
+        db.session.commit()
+        # This line will authenticate the user with Flask-Login
+        login_user(new_user)
+        return redirect(url_for("get_all_posts"))
+    return render_template("register.html", form=form, current_user=current_user)
 
 
 # TODO: Retrieve a user from the database based on their email. 
