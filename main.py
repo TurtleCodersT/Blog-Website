@@ -405,8 +405,17 @@ def confirm_reset(token):
         return render_template('Reset_Password_Step2.html', form=form)
     return redirect(url_for('get_all_posts'))
 
+@admin_only
+@app.route("/change_user_status")
+def change_status():
+    #Finish adding it so it loops through each user in the database and allows you to change their ability
+    pass
 
-
-
+@app.route("/delete_account")
+def delete_account():
+    if current_user.is_authenticated:
+        user = db.session.execute(db.select(User).where(User.email == current_user.email)).scalar()
+        db.session.delete(user)
+        db.session.commit()
 if __name__ == "__main__":
     app.run(debug=True, port=5002)
