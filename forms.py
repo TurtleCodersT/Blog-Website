@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, PasswordField, SelectField
-from wtforms.validators import DataRequired, URL
+from wtforms.validators import DataRequired, URL, Email, EqualTo
 from flask_ckeditor import CKEditorField
 
 
@@ -36,3 +36,11 @@ class Suggest_Edit(FlaskForm):
     edit_text = CKEditorField("Please enter more info in the box below. If the edit is a bug fix or article, please explain exactly where the error is or what article and paragraph the bug/mistake occurs", validators=[DataRequired()])
     other_information = StringField(label="Please type anything else that you want to be changed (Not Required)")
     submit = SubmitField(label="Submit my suggested edit (Suggested Edits are private and your username will not be revealed)")
+class Change_Password(FlaskForm):
+    email = StringField(label="Please enter your email: ", validators=[DataRequired(), Email()])
+    submit = SubmitField(label="Send password reset request. Make sure you're email is correct!")
+
+class Change_Password_Step_2(FlaskForm):
+    new_password = PasswordField(label="Enter your new password! Make sure to write it down because you won't be able to reset your password again today: ", validators=[DataRequired()])
+    new_password_confirm = PasswordField(label='Confirm your password here: ', validators=[DataRequired(), EqualTo('new_password', message='Passwords are not the same')])
+    submit = SubmitField(label="Send password reset request. Make sure you're email is correct!")

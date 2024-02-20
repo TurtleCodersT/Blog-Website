@@ -42,6 +42,8 @@ This will install the packages from the requirements.txt for this project.
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('FLASK_KEY')
+password = os.environ.get('password')
+my_email = os.environ.get('my_email')
 ckeditor = CKEditor(app)
 Bootstrap5(app)
 
@@ -50,7 +52,10 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 @login_manager.user_loader
 def load_user(user_id):
-    return db.get_or_404(User, user_id)
+    #Use when database already has at least one user
+    # return db.get_or_404(User, user_id)
+    #If refactoring database (For example new feature) Use this line and comment out first line until one account is made
+    return User.query.get(int(user_id))
 
 # CREATE DATABASE
 class Base(DeclarativeBase):
@@ -80,6 +85,8 @@ class User(UserMixin, db.Model):
     # This will act like a List of BlogPost objects attached to each User.
     # The "author" refers to the author property in the BlogPost class.
     posts = relationship("BlogPost", back_populates="author")
+    reset_password_token: Mapped[str] = mapped_column(Text, nullable=True)
+    permission_status: Mapped[str] = mapped_column(Text, nullable=False)
 
 
 class BlogPost(db.Model):
@@ -114,8 +121,15 @@ class Suggested_Edits(db.Model):
     edit_type: Mapped[str] = mapped_column(String(250), nullable=False)
     edit_text: Mapped[str] = mapped_column(Text, nullable=False)
     other_info: Mapped[str] = mapped_column(String(250), nullable=True)
-# TODO: Create a User table for all your registered users.
 
+
+class Reset_Password(db.Model):
+    __tablename__ = 'reset_password'
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    email: Mapped[str] = mapped_column(Text, nullable=False)
+    reset_token: Mapped[str] = mapped_column(String, nullable=True)
+    last_reset: Mapped[str] = mapped_column(String, nullable=False)
+# TODO: Create a User table for all your registered users.
 
 with app.app_context():
     db.create_all()
@@ -144,6 +158,7 @@ def register():
             email=form.email.data,
             name=form.name.data,
             password=hash_and_salted_password,
+            permission_status = "Community_Member"
         )
         db.session.add(new_user)
         db.session.commit()
@@ -302,6 +317,95 @@ def about():
 @app.route("/contact")
 def contact():
     return render_template("contact.html")
+
+@app.route("/reset_password", methods=['GET', "POST"])
+def reset_pass():
+    form = forms.Change_Password()
+    if form.validate_on_submit():
+        result = db.session.execute(db.select(User).where(User.email == form.email.data))
+        user = result.scalar()
+        if user:
+            import random
+            letters = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's',
+                       't', 'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L',
+                       'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
+            numbers = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+            symbols = ['!', '$', '&', '+']
+            nr_letters = 17
+            nr_symbols = 5
+            nr_numbers = 7
+            password_list = []
+            letters_pass = [random.choice(letters) for char in range(1, nr_letters + 1)]
+            symbols_pass = [random.choice(symbols) for char in range(1, nr_symbols + 1)]
+            numbers_pass = [random.choice(numbers) for char in range(1, nr_numbers + 1)]
+            password_list = letters_pass + symbols_pass + numbers_pass
+            random.shuffle(password_list)
+            token_reset = ""
+            for char in password_list:
+                token_reset += char
+
+            result = db.session.execute(db.select(Reset_Password).where(Reset_Password.email == form.email.data))
+            user = result.scalar()
+            if user:
+                # if user.last_reset == date.today().strftime("%B %d, %Y"):
+                #     flash("You've reset your password already today! Please submit another request tomorrow.")
+                #     return redirect(url_for('reset_pass'))
+                result = db.session.execute(db.select(Reset_Password).where(Reset_Password.email == form.email.data)).scalar()
+                result.reset_token = token_reset
+                user.last_reset = date.today().strftime("%B %d, %Y")
+            else:
+                new_user_pass = Reset_Password(email=form.email.data, reset_token=token_reset, last_reset=date.today().strftime("%B %d, %Y"))
+                db.session.add(new_user_pass)
+            db.session.commit()
+            print("Test")
+            result = db.session.execute(db.select(Reset_Password).where(Reset_Password.email == form.email.data))
+            user = result.scalar()
+            print(user)
+            user_user = db.session.execute(db.select(User).where(User.email == Reset_Password.email)).scalar()
+            if user_user == None:
+                flash("You do not have a valid account with that email. Create an account or enter a correct email instead")
+                return redirect(url_for('register'))
+            else:
+                user_user.reset_password_token = token_reset
+                db.session.commit()
+                print(user_user.reset_password_token)
+            import smtplib
+            with smtplib.SMTP("smtp.gmail.com") as connection:
+                connection.starttls()
+                connection.login(user=my_email, password=password)
+                connection.sendmail(from_addr=my_email, to_addrs=form.email.data,
+                                    msg=f"Subject: Reset Password Key\n\nThis message has been automatically sent by the reset password request using your account. If you did not request a password reset, you may reset your password as someone likely knows your password. Here is your token: {user.reset_token}. If you add this in the website address /confirm_reset/{user.reset_token} it will reset your password by filling out the form specified. Thanks, hope this helps!")
+            return redirect(url_for('get_all_posts'))
+
+    return render_template('reset_pass_step_1.html', form=form)
+
+@app.route("/confirm_reset/<token>", methods=['GET', "POST"])
+def confirm_reset(token):
+    # Check if it has been more than one hour
+    print(token)
+    user = db.session.execute(db.select(User).where(User.reset_password_token == token)).scalar()
+    if user == None:
+        flash('Invalid Token')
+    else:
+        form = forms.Change_Password_Step_2()
+        if form.validate_on_submit():
+            print(user.password)
+            print(form.new_password.data)
+            hash_and_salted_password = generate_password_hash(
+                form.new_password.data,
+                method='pbkdf2:sha256',
+                salt_length=8
+            )
+            user.password = hash_and_salted_password
+            db.session.commit()
+            print(user.password)
+            return redirect(url_for('login'))
+
+
+        return render_template('Reset_Password_Step2.html', form=form)
+    return redirect(url_for('get_all_posts'))
+
+
 
 
 if __name__ == "__main__":
