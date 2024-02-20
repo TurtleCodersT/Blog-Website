@@ -418,5 +418,6 @@ def delete_account():
         db.session.delete(user)
         db.session.commit()
     return redirect(url_for('get_all_posts'))
+#Here
 if __name__ == "__main__":
     app.run(debug=True, port=5002)
