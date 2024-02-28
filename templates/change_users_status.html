@@ -1,0 +1,23 @@
+{% include "header.html" %}
+{% from 'bootstrap5/form.html' import render_form %}
+<article>
+  <div class="container px-4 px-lg-5">
+    <div class="row gx-4 gx-lg-5 justify-content-center">
+      <div class="col-md-10 col-lg-8 col-xl-7">
+          <br />
+          <br />
+          <br />
+          <br />
+          <ul>
+              {% for user in all_users %}
+              <li>{{user.name}} change status to: <a href="{{url_for('become_blog_writer', id=user.id)}}">Change to blog writer</a>  <a href="{{url_for('become_community_member', id=user.id)}}">Change to community member</a>  Current Status: {{user.permission_status}}</li>
+              {% endfor %}
+          </ul>
+
+        </div>
+
+        </div>
+      </div>
+</article>
+<script src="https://cdn.ckeditor.com/4.10.0/standard/ckeditor.js"></script>
+{% include "footer.html" %}

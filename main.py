@@ -416,6 +416,7 @@ def confirm_reset(token):
                 salt_length=8
             )
             user.password = hash_and_salted_password
+            user.reset_password_token = ""
             db.session.commit()
             print(user.password)
             return redirect(url_for('login'))
