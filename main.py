@@ -25,6 +25,17 @@ def admin_only(function):
             return function(*args, **kwargs)
     return wrapper_function
 
+def Blog_Writer(function):
+    @wraps(function)
+    def wrapper_function(*args, **kwargs):
+        if current_user.permission_status != "Blog-Writer":
+            return abort(403)
+        else:
+            return function(*args, **kwargs)
+
+    return wrapper_function
+
+
 
 
 '''
@@ -164,6 +175,11 @@ def register():
         db.session.commit()
         # This line will authenticate the user with Flask-Login
         login_user(new_user)
+        import smtplib
+        with smtplib.SMTP("smtp.gmail.com") as connection:
+            connection.starttls()
+            connection.login(user=my_email, password=password)
+            connection.sendmail(from_addr=my_email, to_addrs=form.email.data, msg="Subject: Welcome to my Blog Website!\n\nThank you for signing up for my blog website. I am glad that you were able to sign up for my website. I hope that you enjoy your time on my website. Here is a quick overview of the website. There is a comment section below each post which allows you to type a response to the article. In addition, if you have any feedback you would like to provide please visit the suggest feedback page! Some people who I select will be able to make new blog posts. You will know if you have received this option because there were be a new post button. If you see this feel free to make new posts! I will need to approve each person I want to have the ability to post individually. I am currently working on new features for the website, however I am also learning how to make mobile apps. Due to this, I may start making less updates because I am trying to learn app development. I hope you enjoy my website! If you have any feedback you would like to share, please added a suggested edit to my website. Do not respond to this email. I hope you enjoy visiting my website! In addition to this, you can also look at the about page if you would like to learn more information about me.")
         return redirect(url_for("get_all_posts"))
     return render_template("register.html", form=form, current_user=current_user)
 
@@ -221,6 +237,7 @@ def show_post(post_id):
 # TODO: Use a decorator so only an admin user can create a new post
 @app.route("/new-post", methods=["GET", "POST"])
 @admin_only
+@Blog_Writer
 def add_new_post():
     form = CreatePostForm()
     if form.validate_on_submit():
@@ -240,6 +257,7 @@ def add_new_post():
 
 # TODO: Use a decorator so only an admin user can edit a post
 @admin_only
+@Blog_Writer
 @app.route("/edit-post/<int:post_id>", methods=["GET", "POST"])
 def edit_post(post_id):
     post = db.get_or_404(BlogPost, post_id)
@@ -263,6 +281,7 @@ def edit_post(post_id):
 
 # TODO: Use a decorator so only an admin user can delete a post
 @admin_only
+@Blog_Writer
 @app.route("/delete/<int:post_id>")
 def delete_post(post_id):
     if post_id == 1:
@@ -405,12 +424,6 @@ def confirm_reset(token):
         return render_template('Reset_Password_Step2.html', form=form)
     return redirect(url_for('get_all_posts'))
 
-@admin_only
-@app.route("/change_user_status")
-def change_status():
-    #Finish adding it so it loops through each user in the database and allows you to change their ability
-    pass
-
 @app.route("/delete_account")
 def delete_account():
     if current_user.is_authenticated:
@@ -418,6 +431,28 @@ def delete_account():
         db.session.delete(user)
         db.session.commit()
     return redirect(url_for('get_all_posts'))
-#Here
+@app.route("/edit_user_permissions")
+@admin_only
+def edit_user_permissions():
+    all_users = User.query.all()
+    return render_template('change_users_status.html', all_users=all_users)
+@admin_only
+@app.route("/become_blog_writer/<id>")
+def become_blog_writer(id):
+    user = db.session.execute(db.select(User).where(User.id == id)).scalar()
+    user.permission_status = "Blog-Writer"
+    db.session.commit()
+    return redirect(url_for('edit_user_permissions'))
+
+@admin_only
+@app.route("/become_community_member/<id>")
+def become_community_member(id):
+    user = db.session.execute(db.select(User).where(User.id == id)).scalar()
+    user.permission_status = "Community_Member"
+    db.session.commit()
+    return redirect(url_for('edit_user_permissions'))
+
+#Send email thanking people for joining!
+
 if __name__ == "__main__":
     app.run(debug=True, port=5002)
