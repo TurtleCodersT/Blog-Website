@@ -174,14 +174,14 @@ def register():
         db.session.add(new_user)
         db.session.commit()
         # This line will authenticate the user with Flask-Login
+        login_user(new_user)
         import smtplib
         with smtplib.SMTP("smtp.gmail.com") as connection:
             connection.starttls()
             connection.login(user=my_email, password=password)
             connection.sendmail(from_addr=my_email, to_addrs=new_user.email,
                                 msg="Subject: Welcome to my Blog Website!\n\nThank you for signing up for my blog website. I am glad that you were able to sign up for my website. I hope that you enjoy your time on my website. Here is a quick overview of the website. There is a comment section below each post which allows you to type a response to the article. In addition, if you have any feedback you would like to provide please visit the suggest feedback page! Some people who I select will be able to make new blog posts. You will know if you have received this option because there were be a new post button. If you see this feel free to make new posts! I will need to approve each person I want to have the ability to post individually. I am currently working on new features for the website, however I am also learning how to make mobile apps. Due to this, I may start making less updates because I am trying to learn app development. I hope you enjoy my website! If you have any feedback you would like to share, please added a suggested edit to my website. Do not respond to this email. I hope you enjoy visiting my website! In addition to this, you can also look at the about page if you would like to learn more information about me.")
-        login_user(new_user)
-        return redirect(url_for("get_all_posts"))
+            return redirect(url_for("get_all_posts"))
     return render_template("register.html", form=form, current_user=current_user)
 
 
