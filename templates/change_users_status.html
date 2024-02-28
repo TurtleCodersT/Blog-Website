@@ -10,7 +10,7 @@
           <br />
           <ul>
               {% for user in all_users %}
-              <li>{{user.name}} change status to: <a href="{{url_for('become_blog_writer', id=user.id)}}">Change to blog writer</a>  <a href="{{url_for('become_community_member', id=user.id)}}">Change to community member</a>  Current Status: {{user.permission_status}}</li>
+              <li>{{user.name}} change status to: <a href="{{url_for('delete_user', id=user.id)}}">DELETE USER</a> <a href="{{url_for('become_blog_writer', id=user.id)}}">Change to blog writer</a>  <a href="{{url_for('become_community_member', id=user.id)}}">Change to community member</a>  Current Status: {{user.permission_status}}.</li>
               {% endfor %}
           </ul>
 

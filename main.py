@@ -454,6 +454,13 @@ def become_community_member(id):
     db.session.commit()
     return redirect(url_for('edit_user_permissions'))
 
+@admin_only
+@app.route("/delete_user/<id>")
+def delete_user(id):
+    user = db.session.execute(db.select(User).where(User.id == id)).scalar()
+    db.session.delete(user)
+    db.session.commit()
+    return redirect(url_for('edit_user_permissions'))
 #Send email thanking people for joining!
 
 if __name__ == "__main__":
