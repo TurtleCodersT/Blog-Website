@@ -44,3 +44,10 @@ class Change_Password_Step_2(FlaskForm):
     new_password = PasswordField(label="Enter your new password! Make sure to write it down because you won't be able to reset your password again today: ", validators=[DataRequired()])
     new_password_confirm = PasswordField(label='Confirm your password here: ', validators=[DataRequired(), EqualTo('new_password', message='Passwords are not the same')])
     submit = SubmitField(label="Send password reset request. Make sure you're email is correct!")
+
+class Signup_for_Newletter(FlaskForm):
+    interest = StringField(label="What kind of news are you intrested in? Tech, Sports, etc. Enter the exact thing that you are intrested ONLY ONE here: ", validators=[DataRequired()])
+    approx_location = StringField(label="Enter your location. It can be as specific or generic as you want. This will be used for telling you the weather. If you do not feel comfortable sharing your exact location you can type your city or state.")
+    other_info = StringField(label="Would you like to recieve additional information from me Yes or No?")
+    submit = SubmitField(label='Signup!')
+
