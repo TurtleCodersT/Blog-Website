@@ -253,19 +253,6 @@ def add_new_post():
         return redirect(url_for("get_all_posts"))
     return render_template("make-post.html", form=form)
 
-@app.route("/suggest-edit", methods=["GET", "POST"])
-def suggest_an_edit():
-    form = forms.Suggest_Edit()
-    if form.validate_on_submit():
-        edit_type = form.edit_type.data
-        edit_text = form.edit_text.data
-        other_info = form.other_information.data
-        New_Edit = Suggested_Edits(edit_type=edit_type, edit_text=edit_text, other_info=other_info)
-        db.session.add(New_Edit)
-        db.session.commit()
-        return redirect(url_for('get_all_posts'))
-    return render_template('suggest_edit.html', form=form)
-
 # TODO: Use a decorator so only an admin user can edit a post
 @admin_only
 @app.route("/edit-post/<int:post_id>", methods=["GET", "POST"])
