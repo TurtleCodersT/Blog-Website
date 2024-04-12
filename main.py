@@ -252,7 +252,7 @@ def add_new_post():
         db.session.commit()
         return redirect(url_for("get_all_posts"))
     return render_template("make-post.html", form=form)
-
+#
 
 # TODO: Use a decorator so only an admin user can edit a post
 @admin_only
