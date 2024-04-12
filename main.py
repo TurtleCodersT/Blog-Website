@@ -432,7 +432,7 @@ def delete_account():
 @app.route("/edit_user_permissions")
 @admin_only
 def edit_user_permissions():
-    all_users = User.query.all()
+    all_users = db.session.execute(db.select(User).where(User.id > -1)).scalar()
     return render_template('change_users_status.html', all_users=all_users)
 @admin_only
 @app.route("/become_blog_writer/<id>")
