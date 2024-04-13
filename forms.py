@@ -51,3 +51,18 @@ class Signup_for_Newletter(FlaskForm):
     other_info = StringField(label="Would you like to recieve additional information from me Yes or No?")
     submit = SubmitField(label='Signup!')
 
+class NewsletterEmail(FlaskForm):
+    subject = StringField("Subject of the email", validators=[DataRequired()])
+    body = StringField("Body of the email", validators=[DataRequired()])
+    submit = SubmitField("Submit and Send Email")
+
+class DeleteAccount(FlaskForm):
+    confirmation = StringField("Please type: I confirm that I would like to delete my account and I understand that this action cannot be undone")
+    double_confirmation = StringField("Please type once again: I confirm that I would like to delete my account and I understand that this action cannot be undone")
+    submit = SubmitField("This is your last chance! If you typed what the prompts said above, your account will be deleted")
+
+class ContactMe(FlaskForm):
+    name = StringField("Name/Username: ")
+    email_address = StringField("Email: ")
+    message = StringField("Message: ")
+    submit = SubmitField("This email will be sent to me and I will try to respond to you as soon as possible.")

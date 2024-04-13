@@ -12,3 +12,6 @@ gunicorn==21.2.0
 psycopg2-binary==2.9.9
 email_validator==2.1.0
 flask_mail==0.9.1
+requests==2.31.0
+html==1.16
+statistics==1.0.3.5

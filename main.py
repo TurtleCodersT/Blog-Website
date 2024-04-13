@@ -17,6 +17,9 @@ import forms
 # Import your forms from the forms.py
 from forms import CreatePostForm
 from flask_mail import Mail, Message
+import requests
+import html
+import statistics
 
 
 def admin_only(function):
@@ -347,9 +350,19 @@ def about():
     return render_template("about.html")
 
 
-@app.route("/contact")
+@app.route("/contact", methods=['GET', "POST"])
 def contact():
-    return render_template("contact.html")
+    form = forms.ContactMe()
+    if form.validate_on_submit():
+        name = form.name.data
+        email = form.email_address.data
+        message = form.message.data
+        msg = Message('Request from user', sender=my_email, recipients=[my_email])
+        msg.body = f"This email is by: {name} from {email}. This is what they want you to read: {message}. If this message was not appropriate here are the details of the person who sent it: {current_user.email}, {current_user.name}. If there is an issue please deal with it according. For now, take action on the email!"
+        mail.send(msg)
+        return redirect(url_for('get_all_posts'))
+
+    return render_template("contact.html", form=form)
 
 @app.route("/reset_password", methods=['GET', "POST"])
 def reset_pass():
@@ -402,12 +415,10 @@ def reset_pass():
                 user_user.reset_password_token = token_reset
                 db.session.commit()
                 print(user_user.reset_password_token)
-            import smtplib
-            with smtplib.SMTP("smtp.gmail.com") as connection:
-                connection.starttls()
-                connection.login(user=my_email, password=password)
-                connection.sendmail(from_addr=my_email, to_addrs=form.email.data,
-                                    msg=f"Subject: Reset Password Key\n\nThis message has been automatically sent by the reset password request using your account. If you did not request a password reset, you may reset your password as someone likely knows your password. Here is your token: {user.reset_token}. If you add this in the website address /confirm_reset/{user.reset_token} it will reset your password by filling out the form specified. Thanks, hope this helps!")
+
+            msg = Message('Reset Password Key', sender=my_email, recipients=[form.email.data])
+            msg.body = f"This message has been automatically sent by the reset password request using your account. If you did not request a password reset, you may reset your password as someone likely knows your password. Here is your token: {user.reset_token}. If you add this in the website address /confirm_reset/{user.reset_token} it will reset your password by filling out the form specified. Thanks, hope this helps!"
+            mail.send(msg)
             return redirect(url_for('get_all_posts'))
 
     return render_template('reset_pass_step_1.html', form=form)
@@ -439,18 +450,95 @@ def confirm_reset(token):
         return render_template('Reset_Password_Step2.html', form=form)
     return redirect(url_for('get_all_posts'))
 
-@app.route("/delete_account")
+@app.route("/delete_account", methods=['GET', "POST"])
 def delete_account():
-    if current_user.is_authenticated:
-        user = db.session.execute(db.select(User).where(User.email == current_user.email)).scalar()
-        db.session.delete(user)
-        db.session.commit()
-    return redirect(url_for('get_all_posts'))
+    form = forms.DeleteAccount()
+    if form.validate_on_submit():
+        if current_user.is_authenticated:
+            if form.confirmation.data == "I confirm that I would like to delete my account and I understand that this action cannot be undone" and form.double_confirmation.data == "I confirm that I would like to delete my account and I understand that this action cannot be undone":
+                user = db.session.execute(db.select(User).where(User.email == current_user.email)).scalar()
+                db.session.delete(user)
+                db.session.commit()
+        return redirect(url_for('get_all_posts'))
+    return render_template('confirm_delete_account.html', form=form)
 @admin_only
 @app.route("/edit_user_permissions")
 def edit_user_permissions():
     all_users = User.query.all()
     return render_template('change_users_status.html', all_users=all_users)
+
+@admin_only
+@app.route('/send_personalized_emails')
+def personalized_emails():
+    result = db.session.execute(db.select(User).where(User.interests != None)).scalars()
+    result_list = result.fetchall()
+    for user in result_list:
+        api_key_new = os.environ.get('news_api_key')
+        app_id = os.environ.get('app_id')
+        data = requests.get((f'https://newsapi.org/v2/everything?qInTitle={user.interests}&sortBy=popularity&apiKey={api_key_new}'))
+        data = html.unescape(data.json())
+        start_point = data["articles"]
+        first_three = start_point[:3]
+        articles = [html.unescape(f"{article['title']} Description: {article['description']}").encode('ascii', 'ignore') for article in first_three]
+        response = requests.get(f"http://api.openweathermap.org/geo/1.0/direct?q={user.approx_location}&limit=2&appid={app_id}")
+        response.raise_for_status()
+        data = response.json()
+        lat = data[0]["lat"]
+        lon = data[0]['lon']
+        response = requests.get(f"https://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&appid={app_id}&cnt=8")
+        response.raise_for_status()
+        data = response.json()
+        will_rain = False
+        is_sunny = False
+        temperatures = []
+        temp_feels = []
+        for hour_data in data["list"]:
+            current_type = hour_data["weather"][0]["main"]
+            wind_speed = hour_data["wind"]["speed"]
+            current_id = hour_data["weather"][0]["id"]
+            temperature_as_fahrenheit_min = round((((hour_data["main"]["temp_min"]) - 273.15) * 9 / 5) + 32)
+            temperatures.append(temperature_as_fahrenheit_min)
+            temperature_as_fahrenheit_max = round((((hour_data["main"]["temp_max"]) - 273.15) * 9 / 5) + 32)
+            temperatures.append(temperature_as_fahrenheit_max)
+            temperature_feel = round((((hour_data["main"]["feels_like"]) - 273.15) * 9 / 5) + 32)
+            temp_feels.append(temperature_feel)
+            if int(current_id) < 700:
+                will_rain = True
+            if int(current_id) >= 800:
+                is_sunny = True
+        low = min(temperatures)
+        high = max(temperatures)
+        average_feel = round(statistics.mean(temp_feels), 2)
+        if will_rain and is_sunny:
+            subject = "Mixed weather Today"
+            msgs = f'The weather will be somewhat rainy but also sunny at the same time today. You might want to bring an umbrella with you! The low will be {low} degrees with the high being {high}. It will feel on average {average_feel} degrees. It will be {current_type}y and {wind_speed} MPH wind.'
+        elif will_rain:
+            subject = "Rain Today!"
+            msgs = f"It will likely rain today! Bring an umbrella to work or school. It will be a low of {low} degrees with a high of {high} degrees. The temperature feels like {average_feel}. It will be {current_type}y and {wind_speed} mph wind."
+        elif is_sunny:
+            subject = "Sunny Weather Today!"
+            msgs = f"It is pretty sunny weather for the next 24 hours! There will be a low of {low} degrees and a high of {high} degrees. The temperature feels like {average_feel}. It will be {current_type}y and {wind_speed} MPH wind."
+
+        msg = Message("Your news and Local weather", sender=my_email, recipients=[user.email])
+        msg.body = f"Here are some articles that you might like! 1{articles[0]} \n 2{articles[1]} \n 3{articles[2]}. I hope you enjoy! \n Here is the weather near you: {subject}: {msgs}"
+        mail.send(msg)
+    return render_template('index.html')
+
+@admin_only
+@app.route("/new_newsletter_email", methods=['GET', "POST"])
+def new_newsletter_email():
+    form = forms.NewsletterEmail()
+    if form.validate_on_submit():
+        result = db.session.execute(db.select(User).where(User.interests != None)).scalars()
+        result_list = result.fetchall()
+        emails = [email.email for email in result_list]
+        subject = form.subject.data
+        body = form.body.data
+        msg = Message(subject, sender=my_email, bcc=emails)
+        msg.body = body
+        mail.send(msg)
+    return render_template('new_newsletter_email.html', form=form)
+
 @admin_only
 @app.route("/become_blog_writer/<id>")
 def become_blog_writer(id):
@@ -484,7 +572,6 @@ def newsletter_management():
         user.approx_location = form.approx_location.data
         user.receive_additional_information = form.other_info
         db.session.commit()
-
         msg = Message('Welcome to my Newsletter!', sender=my_email, recipients=[current_user.email])
         msg.body = "Thank you for signing up for my newletter. I greatly appreciate it! I hope you enjoy learning more about my website and getting more information from me too. You should be recieving another email soon that will give you your first update. Thanks! Enjoy!"
         mail.send(msg)
@@ -494,5 +581,3 @@ def newsletter_management():
 
 if __name__ == "__main__":
     app.run(debug=True, port=5002)
-
-    #

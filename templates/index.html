@@ -34,7 +34,7 @@
           <a href="#">{{post.author.name}}</a>
           on {{post.date}}
           <!-- TODO: Only show delete button if user id is 1 (admin user) -->
-          {% if current_user.id == 1 or current_user.permission_status == "Blog-Writer" %}
+          {% if current_user.id == 1 or current_user.name == post.author.name %}
           <a href="{{url_for('delete_post', post_id=post.id) }}">✘</a>
           {% endif %}
         </p>
@@ -64,12 +64,36 @@
       </div>
       {% endif %}
 
-      <!-- Pager-->
+          {% if current_user.id == 1 %}
       <div class="d-flex justify-content-end mb-4">
-        {% if current_user.id == 1 %}
-        <a href="{{url_for('view_edits')}}">View Suggested Edits</a>
-        {% endif %}
+        <a
+          class="btn btn-primary float-right"
+          href="{{ url_for('new_newsletter_email')}}"
+          >New Newsletter Email</a
+        >
       </div>
+      {% endif %}
+
+      {% if current_user.id == 1 %}
+      <div class="d-flex justify-content-end mb-4">
+        <a
+          class="btn btn-primary float-right"
+          href="{{ url_for('personalized_emails')}}"
+          >Send out Personalized Email</a
+        >
+      </div>
+      {% endif %}
+
+      {% if current_user.id == 1 %}
+      <div class="d-flex justify-content-end mb-4">
+        <a
+          class="btn btn-primary float-right"
+          href="{{ url_for('view_edits')}}"
+          >View Suggested Edits</a
+        >
+      </div>
+      {% endif %}
+
     </div>
   </div>
 </div>
