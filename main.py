@@ -16,6 +16,8 @@ import os
 import forms
 # Import your forms from the forms.py
 from forms import CreatePostForm
+from flask_mail import Mail, Message
+
 
 def admin_only(function):
     @wraps(function)
@@ -57,6 +59,12 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('FLASK_KEY')
 password = os.environ.get('password')
 my_email = os.environ.get('my_email')
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 465
+app.config['MAIL_USERNAME'] = my_email
+app.config['MAIL_PASSWORD'] = password
+app.config['MAIL_USE_TLS'] = False
+app.config['MAIL_USE_SSL'] = True
 ckeditor = CKEditor(app)
 Bootstrap5(app)
 
@@ -76,6 +84,7 @@ class Base(DeclarativeBase):
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DB_URI", 'sqlite:///posts.db')
 db = SQLAlchemy(model_class=Base)
 db.init_app(app)
+mail = Mail(app)
 
 gravatar = Gravatar(app,
                     size=100,
@@ -180,6 +189,10 @@ def register():
         db.session.commit()
         # This line will authenticate the user with Flask-Login
         login_user(new_user)
+
+        msg = Message('Hello and welcome to my blog website', sender=my_email, recipients=[new_user.email])
+        msg.body = "Thank you for signing up on my blog website. I am glad that you decided to sign up! Now you can access all the features of the website and can enjoy my website more. I hope you enjoy spending time on my website. If you have any feedback you would like to share that will make my website better, share it under 'suggest edit'. Also if there are any other questions that you want to ask me so that only I can see it, you can also ask those questions there as well. Thank you and I hope you enjoy!"
+        mail.send(msg)
         return redirect(url_for("get_all_posts"))
     return render_template("register.html", form=form, current_user=current_user)
 
@@ -471,11 +484,10 @@ def newsletter_management():
         user.approx_location = form.approx_location.data
         user.receive_additional_information = form.other_info
         db.session.commit()
-        with smtplib.SMTP("smtp.gmail.com") as connection:
-            connection.starttls()
-            connection.login(user=my_email, password=password)
-            connection.sendmail(from_addr=my_email, to_addrs=current_user.email,
-                                msg="Subject: Welcome to my Newsletter!\n\nThank you for signing up for my newletter. I greatly appreciate it! I hope you enjoy learning more about my website and getting more information from me too. You should be recieving another email soon that will give you your first update. Thanks! Enjoy!")
+
+        msg = Message('Welcome to my Newsletter!', sender=my_email, recipients=[current_user.email])
+        msg.body = "Thank you for signing up for my newletter. I greatly appreciate it! I hope you enjoy learning more about my website and getting more information from me too. You should be recieving another email soon that will give you your first update. Thanks! Enjoy!"
+        mail.send(msg)
         return redirect(url_for('get_all_posts'))
     return render_template('newsletter_management.html', form=form)
 
