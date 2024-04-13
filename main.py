@@ -209,12 +209,16 @@ def logout():
     logout_user()
     return redirect(url_for('get_all_posts'))
 
+#TODO: Add feature that will allow me to dynamically add new quotes and save them in a database rather than a hardcoded list
 
+quotes = ["You miss 100% of the shots you don't take - Wayne Gretzky", "I can is 100 times more important than I.Q - Albert Einstein", "A winner is a dreamer who never gives up. - Nelson Mandela", "Don't cry because it'a over, smile because it happened"]
+import random
 @app.route('/')
 def get_all_posts():
+    quote_to_display = random.choice(quotes)
     result = db.session.execute(db.select(BlogPost))
     posts = result.scalars().all()
-    return render_template("index.html", all_posts=posts)
+    return render_template("index.html", all_posts=posts, quote=quote_to_display)
 
 
 # TODO: Allow logged-in users to comment on posts
@@ -429,10 +433,10 @@ def delete_account():
         db.session.delete(user)
         db.session.commit()
     return redirect(url_for('get_all_posts'))
-@app.route("/edit_user_permissions")
 @admin_only
+@app.route("/edit_user_permissions")
 def edit_user_permissions():
-    all_users = db.session.execute(db.select(User).where(User.id > -1)).scalar()
+    all_users = User.query.all()
     return render_template('change_users_status.html', all_users=all_users)
 @admin_only
 @app.route("/become_blog_writer/<id>")
